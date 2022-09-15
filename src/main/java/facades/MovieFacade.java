@@ -1,5 +1,6 @@
 package facades;
 
+import dtos.ActorDTO;
 import dtos.MovieDTO;
 import dtos.RenameMeDTO;
 import entities.Actor;
@@ -69,11 +70,18 @@ public class MovieFacade {
         return query.getSingleResult();
     }
 
-    public List<MovieDTO> getAllMovies() {
+    public List<MovieDTO> getAllMovies(){
         EntityManager em = emf.createEntityManager();
-        TypedQuery<Movie> query = em.createQuery("select m from Movie m", Movie.class);
-        List<Movie> movies = query.getResultList();
-        return MovieDTO.getDtos(new LinkedHashSet<>(movies));
+        TypedQuery<MovieDTO> queryM = em.createQuery("select NEW dtos.MovieDTO(m) from Movie m", MovieDTO.class);
+        List<MovieDTO> mDtos = queryM.getResultList();
+        for (MovieDTO md : mDtos){
+            TypedQuery<ActorDTO> queryA = em.createQuery("select DISTINCT NEW dtos.ActorDTO(a) from Actor a " +
+                    "join a.movies m " +
+                    "join m.actors ac where m.id = :id", ActorDTO.class);
+            queryA.setParameter("id", md.getId());
+            md.setActors(queryA.getResultList());
+        }
+        return mDtos;
     }
 
     public MovieDTO getMovieById (int id) {
